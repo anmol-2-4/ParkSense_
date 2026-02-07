@@ -1,0 +1,50 @@
+# Parking prediction config - single city prototype
+city: "la"
+time_bucket_minutes: 30
+n_zones: 24
+train_val_split_weeks: 4
+random_seed: 42
+
+# Paths (relative to project root)
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  model_dir: "data/models"
+  source: "synthetic"           # ladot | synthetic
+
+# Features to use
+features:
+  temporal: true
+  lags: [1, 2, 3, 4]           # previous buckets
+  same_hour_prev_week: true
+  traffic_proxy: true           # peak hour flags if no real traffic
+  events_proxy: true            # placeholder until real events
+
+# Model
+model:
+  type: "lightgbm"
+  objective: "regression"
+  quantile_alpha: [0.1, 0.5, 0.9]   # for confidence intervals
+  num_leaves: 31
+  n_estimators: 200
+  learning_rate: 0.05
+
+# LADOT (Los Angeles) open data
+ladot:
+  base_url: "https://data.lacity.org/resource"
+  inventory_id: "s49e-q6j2"
+  live_id: "e7h6-4a3e"
+  archive_id: "cj8s-ivry"
+  archive_csv_url: "https://data.lacity.org/api/views/cj8s-ivry/rows.csv?accessType=DOWNLOAD"
+  max_rows: 200000
+  page_size: 50000
+  history_days: 30
+  live_history_minutes: 10
+  live_poll_seconds: 20
+  app_token: null
+
+# Real-time demo mode
+realtime:
+  mode: "ladot_live"     # ladot_live | simulated | snapshot
+  refresh_seconds: 30
+  history_days: 1

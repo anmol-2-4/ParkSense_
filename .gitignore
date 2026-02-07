@@ -1,0 +1,16 @@
+# Data and models (can be large)
+data/
+*.parquet
+*.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ParkSense — Smart City Parking Intelligence Platform for zone-wise availability with confidence intervals. Plan where to park and reduce search traffic.">
+  <title>ParkSense | Smart City Parking Intelligence Platform</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b1115;
+      --bg-secondary: #121a1f;
+      --bg-elevated: #18222a;
+      --bg-card: #1a2631;
+      --border: #27323d;
+      --text-primary: #eef2f6;
+      --text-secondary: #9aa6b2;
+      --accent: #65d6a6;
+      --accent-2: #6aa9ff;
+      --success: #49d17d;
+      --warning: #f7b955;
+      --danger: #ff6b6b;
+      --radius: 14px;
+      --shadow: 0 20px 60px rgba(0,0,0,0.35);
+      --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --hero-glow-1: rgba(106,169,255,0.18);
+      --hero-glow-2: rgba(101,214,166,0.2);
+      --panel-bg: rgba(18, 26, 31, 0.9);
+      --overlay-bg: rgba(18, 26, 31, 0.88);
+      --chip-bg: rgba(101, 214, 166, 0.15);
+      --chip-border: rgba(101, 214, 166, 0.35);
+      --bar-bg: rgba(255,255,255,0.06);
+      --panel-soft: rgba(255,255,255,0.04);
+    }
+    [data-theme="light"] {
+      --bg-primary: #f7f5f1;
+      --bg-secondary: #ffffff;
+      --bg-elevated: #f5f0e9;
+      --bg-card: #ffffff;
+      --border: #e5dfd6;
+      --text-primary: #1b2026;
+      --text-secondary: #6f7a86;
+      --hero-glow-1: rgba(255, 197, 120, 0.22);
+      --hero-glow-2: rgba(101, 214, 166, 0.18);
+      --panel-bg: rgba(255, 255, 255, 0.9);
+      --overlay-bg: rgba(255, 255, 255, 0.9);
+      --chip-bg: rgba(27, 32, 38, 0.08);
+      --chip-border: rgba(27, 32, 38, 0.18);
+      --shadow: 0 18px 40px rgba(27,32,38,0.12);
+      --bar-bg: rgba(0,0,0,0.06);
+      --panel-soft: rgba(0,0,0,0.04);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 700px at 15% -10%, var(--hero-glow-1), transparent 60%),
+                  radial-gradient(900px 600px at 90% 10%, var(--hero-glow-2), transparent 60%),
+                  var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23161f26' fill-opacity='0.35'%3E%3Ccircle cx='2' cy='2' r='1'/%3E%3Ccircle cx='82' cy='36' r='1'/%3E%3Ccircle cx='140' cy='110' r='1'/%3E%3Ccircle cx='52' cy='94' r='1'/%3E%3C/g%3E%3C/svg%3E");
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: -1;
+    }
+    .header {
+      padding: 1.2rem 1.75rem;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      backdrop-filter: blur(12px);
+    }
+    .header-brand { display: flex; align-items: baseline; gap: 0.5rem; }
+    .header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header .tagline {
+      margin: 0.25rem 0 0;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: var(--chip-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--chip-border);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    }
+    .toggle:hover {
+      border-color: var(--accent-2);
+      color: var(--text-primary);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+    }
+    .status-dot.live { background: var(--success); box-shadow: 0 0 10px rgba(73,209,125,0.9); }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      height: calc(100vh - 68px);
+      overflow: hidden;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      background: var(--bg-secondary);
+    }
+    .map-shell {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+    }
+    .map-shell.sticky {
+      position: sticky;
+      top: 68px;
+      align-self: start;
+    }
+    .map-overlay {
+      position: absolute;
+      right: 1.5rem;
+      top: 1.5rem;
+      z-index: 500;
+      background: var(--overlay-bg);
+      border: 1px solid var(--border);
+      padding: 0.9rem 1rem;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      min-width: 220px;
+    }
+    .map-overlay h3 {
+      margin: 0 0 0.35rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .map-overlay p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+    }
+    .legend {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .sidebar {
+      padding: 1.5rem;
+      overflow-y: auto;
+      height: 100%;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin: 0 0 0.85rem;
+    }
+    .overview {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .insight-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .insight-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.95rem 1rem;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+    .insight-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 0.6rem;
+    }
+    .trend {
+      height: 90px;
+      width: 100%;
+      border-radius: 10px;
+      background: var(--panel-soft);
+      position: relative;
+      overflow: hidden;
+    }
+    .trend svg {
+      position: absolute;
+      inset: 0;
+    }
+    .trend .grid {
+      stroke: rgba(255,255,255,0.08);
+      stroke-width: 1;
+    }
+    .trend .line {
+      fill: none;
+      stroke: url(#trendGradient);
+      stroke-width: 2.5;
+    }
+    .trend .area {
+      fill: url(#trendFill);
+      opacity: 0.5;
+    }
+    .distribution {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .dist-bar {
+      background: var(--panel-soft);
+      border-radius: 10px;
+      padding: 0.6rem;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .dist-bar span {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+    }
+    .dist-bar strong {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .rank-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.45rem;
+    }
+    .rank-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0.65rem;
+      border-radius: 10px;
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+    }
+    .rank-item strong {
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+    .rank-item .tag {
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+    }
+    .overview-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 0.95rem;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+    .overview-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+    .overview-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-top: 0.3rem;
+    }
+    .overview-sub {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-top: 0.2rem;
+    }
+    .zone-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 0.95rem 1rem 0.85rem;
+      margin-bottom: 0.7rem;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.2s ease;
+    }
+    .zone-card:hover {
+      border-color: rgba(106,169,255,0.5);
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+    .zone-card .zone-name { font-weight: 600; font-size: 0.9375rem; }
+    .zone-card .free { color: var(--text-secondary); font-size: 0.8125rem; margin-top: 0.25rem; }
+    .zone-card .free strong { color: var(--success); font-family: var(--mono); }
+    .zone-card .confidence { color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.375rem; line-height: 1.4; }
+    .zone-card .observed { color: var(--accent-2); font-size: 0.7rem; margin-left: 0.35rem; font-weight: 500; }
+    .bar {
+      height: 6px;
+      background: var(--bar-bg);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(101,214,166,0.9), rgba(106,169,255,0.9));
+      transition: width 0.6s ease;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2em 0.5em;
+      border-radius: 6px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .badge-green { background: rgba(52, 199, 89, 0.2); color: var(--success); }
+    .badge-yellow { background: rgba(255, 176, 32, 0.2); color: var(--warning); }
+    .badge-red { background: rgba(255, 69, 58, 0.2); color: var(--danger); }
+    .loading-skeleton {
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+    .loading-skeleton .spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 0.75rem;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-state {
+      padding: 1.25rem;
+      background: rgba(255, 69, 58, 0.08);
+      border: 1px solid rgba(255, 69, 58, 0.3);
+      border-radius: var(--radius);
+      color: var(--danger);
+      font-size: 0.875rem;
+    }
+    .error-state strong { display: block; margin-bottom: 0.25rem; }
+    .footer {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+    .meta-row strong {
+      font-family: var(--mono);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; height: auto; }
+      .sidebar { border-left: none; border-top: 1px solid var(--border); height: auto; }
+      .map-overlay { position: static; margin: 1rem; }
+      .map-shell { display: grid; height: auto; }
+      #map { min-height: 360px; height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-brand">
+      <h1>ParkSense</h1>
+      <p class="tagline">Smart City Parking Intelligence Platform</p>
+    </div>
+    <div class="header-actions">
+      <span class="chip">Los Angeles</span>
+      <button class="toggle" id="theme-toggle" type="button">Theme</button>
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Checking…</span>
+    </div>
+  </header>
+  <div class="layout">
+    <div class="map-shell sticky">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <h3>Availability Radar</h3>
+        <p>Auto-refreshing every 30 seconds. Tap a zone card to zoom.</p>
+        <div class="legend">
+          <span><span class="dot" style="background:#49d17d"></span>Likely free</span>
+          <span><span class="dot" style="background:#f7b955"></span>Moderate</span>
+          <span><span class="dot" style="background:#ff6b6b"></span>Likely full</span>
+        </div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <h2 class="section-title">Live Overview</h2>
+      <div class="overview">
+        <div class="overview-card">
+          <div class="overview-label">Avg Occupancy</div>
+          <div class="overview-value" id="avg-occ">—</div>
+          <div class="overview-sub">Across all zones</div>
+        </div>
+        <div class="overview-card">
+          <div class="overview-label">Free Spaces</div>
+          <div class="overview-value" id="total-free">—</div>
+          <div class="overview-sub">Estimated now</div>
+        </div>
+        <div class="overview-card">
+          <div class="overview-label">Open Zones</div>
+          <div class="overview-value" id="open-zones">—</div>
+          <div class="overview-sub">Likely free</div>
+        </div>
+        <div class="overview-card">
+          <div class="overview-label">Last Update</div>
+          <div class="overview-value" id="last-update">—</div>
+          <div class="overview-sub">Local time</div>
+        </div>
+      </div>
+      <div class="insight-grid">
+        <div class="insight-card">
+          <div class="insight-title">Live Trend (Avg Occupancy)</div>
+          <div class="trend">
+            <svg viewBox="0 0 300 90" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="trendGradient" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stop-color="#65d6a6"></stop>
+                  <stop offset="100%" stop-color="#6aa9ff"></stop>
+                </linearGradient>
+                <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#65d6a6"></stop>
+                  <stop offset="100%" stop-color="rgba(106,169,255,0)"></stop>
+                </linearGradient>
+              </defs>
+              <path class="area" id="trend-area" d=""></path>
+              <path class="line" id="trend-line" d=""></path>
+            </svg>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-title">Zone Distribution</div>
+          <div class="distribution">
+            <div class="dist-bar">
+              <strong id="dist-free">—</strong>
+              <span>Likely Free</span>
+            </div>
+            <div class="dist-bar">
+              <strong id="dist-mod">—</strong>
+              <span>Moderate</span>
+            </div>
+            <div class="dist-bar">
+              <strong id="dist-full">—</strong>
+              <span>Likely Full</span>
+            </div>
+          </div>
+        </div>
+        <div class="insight-card">
+          <div class="insight-title">Top Zones</div>
+          <div class="rank-list" id="rank-list">
+            <div class="rank-item"><span>—</span><strong>—</strong></div>
+          </div>
+        </div>
+      </div>
+      <h2 class="section-title">Parking Zones</h2>
+      <div id="zone-list" class="loading-skeleton">
+        <div class="spinner"></div>
+        <div>Loading predictions…</div>
+      </div>
+      <footer class="footer">
+        Predictions use open data and quantile regression. Not a guarantee of availability.
+        <br><a href="/docs" target="_blank" rel="noopener">API docs</a>
+      </footer>
+    </aside>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const API = '';
+    const THEME_KEY = 'parking-theme';
+    const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    const root = document.documentElement;
+    let tileLayer = null;
+
+    function setTile(theme) {
+      const url = theme === 'light' ? TILE_LIGHT : TILE_DARK;
+      if (tileLayer) {
+        map.removeLayer(tileLayer);
+      }
+      tileLayer = L.tileLayer(url, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+      }).addTo(map);
+    }
+
+    function applyTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      localStorage.setItem(THEME_KEY, theme);
+      const toggle = document.getElementById('theme-toggle');
+      toggle.textContent = theme === 'light' ? 'Light' : 'Dark';
+      setTile(theme);
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved) return applyTheme(saved);
+      const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+      applyTheme(prefersLight ? 'light' : 'dark');
+    }
+
+    const map = L.map('map').setView([34.05, -118.25], 12);
+    tileLayer = L.tileLayer(TILE_DARK, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+    }).addTo(map);
+    const markers = {};
+    const state = {
+      lastUpdated: null,
+      trend: []
+    };
+
+    function occupancyBadge(rate) {
+      if (rate <= 0.4) return '<span class="badge badge-green">Likely free</span>';
+      if (rate <= 0.7) return '<span class="badge badge-yellow">Moderate</span>';
+      return '<span class="badge badge-red">Likely full</span>';
+    }
+
+    async function checkHealth() {
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      try {
+        const r = await fetch(API + '/health');
+        const d = await r.json();
+        if (d.model_loaded) {
+          dot.classList.add('live');
+          text.textContent = 'Live';
+        } else {
+          text.textContent = 'Model not loaded';
+        }
+      } catch (_) {
+        text.textContent = 'Offline';
+      }
+    }
+
+    function formatPercent(value) {
+      return `${Math.round(value * 100)}%`;
+    }
+
+    function updateOverview({ avgOcc, totalFree, openZones, lastUpdated }) {
+      const avgEl = document.getElementById('avg-occ');
+      const freeEl = document.getElementById('total-free');
+      const openEl = document.getElementById('open-zones');
+      const timeEl = document.getElementById('last-update');
+
+      avgEl.textContent = avgOcc != null ? formatPercent(avgOcc) : '—';
+      freeEl.textContent = totalFree != null ? totalFree.toLocaleString() : '—';
+      openEl.textContent = openZones != null ? openZones.toString() : '—';
+      timeEl.textContent = lastUpdated ? lastUpdated : '—';
+    }
+
+    function updateTrend(value) {
+      const maxPoints = 30;
+      if (typeof value !== 'number' || Number.isNaN(value)) return;
+      state.trend.push(value);
+      if (state.trend.length > maxPoints) state.trend.shift();
+
+      const points = state.trend;
+      const width = 300;
+      const height = 90;
+      const pad = 6;
+      const min = Math.min(...points);
+      const max = Math.max(...points);
+      const span = Math.max(0.01, max - min);
+
+      const path = points.map((v, i) => {
+        const x = (i / (maxPoints - 1)) * width;
+        const y = pad + ((max - v) / span) * (height - pad * 2);
+        return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+      }).join(' ');
+
+      const area = `${path} L ${width},${height} L 0,${height} Z`;
+      document.getElementById('trend-line').setAttribute('d', path);
+      document.getElementById('trend-area').setAttribute('d', area);
+    }
+
+    function updateDistribution(predictions) {
+      let free = 0;
+      let mod = 0;
+      let full = 0;
+      predictions.forEach(p => {
+        if (p.occupancy_rate <= 0.4) free += 1;
+        else if (p.occupancy_rate <= 0.7) mod += 1;
+        else full += 1;
+      });
+      document.getElementById('dist-free').textContent = free;
+      document.getElementById('dist-mod').textContent = mod;
+      document.getElementById('dist-full').textContent = full;
+    }
+
+    function updateRankings(predictions) {
+      const list = document.getElementById('rank-list');
+      const sortedFree = [...predictions].sort((a, b) => a.occupancy_rate - b.occupancy_rate).slice(0, 3);
+      const sortedFull = [...predictions].sort((a, b) => b.occupancy_rate - a.occupancy_rate).slice(0, 2);
+      const rows = [
+        ...sortedFree.map(p => ({ label: `Zone ${p.zone_id}`, value: `${Math.round((1 - p.occupancy_rate) * 100)}% free`, tag: 'Best' })),
+        ...sortedFull.map(p => ({ label: `Zone ${p.zone_id}`, value: `${Math.round(p.occupancy_rate * 100)}% full`, tag: 'Busy' }))
+      ];
+      list.innerHTML = '';
+      rows.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'rank-item';
+        item.innerHTML = `<span>${r.label} <span class="tag">${r.tag}</span></span><strong>${r.value}</strong>`;
+        list.appendChild(item);
+      });
+    }
+
+    async function loadPredictions() {
+      const listEl = document.getElementById('zone-list');
+      try {
+        const [predRes, zonesRes] = await Promise.all([
+          fetch(API + '/predict/all'),
+          fetch(API + '/zones')
+        ]);
+        if (!predRes.ok || !zonesRes.ok) throw new Error('Service unavailable');
+        const data = await predRes.json();
+        const zones = await zonesRes.json();
+        const zoneMap = Object.fromEntries(zones.zones.map(z => [z.zone_id, z]));
+
+        listEl.innerHTML = '';
+        let totalFree = 0;
+        let totalCap = 0;
+        let totalOcc = 0;
+        let openZones = 0;
+
+        data.predictions.forEach(p => {
+          const meta = zoneMap[p.zone_id];
+          const lat = meta?.lat_centroid ?? 34.05;
+          const lon = meta?.lon_centroid ?? -118.25;
+          const free = p.free_spaces;
+          const cap = p.capacity;
+          const rate = p.occupancy_rate;
+          totalFree += free;
+          totalCap += cap;
+          totalOcc += rate;
+          if (rate <= 0.4) openZones += 1;
+
+          const card = document.createElement('div');
+          card.className = 'zone-card';
+          card.dataset.zoneId = p.zone_id;
+          const observed = p.latest_observed_occupancy != null ? `<span class="observed">Observed: ${Math.round(p.latest_observed_occupancy * 100)}%</span>` : '';
+          card.innerHTML = `
+            <div class="zone-name">Zone ${p.zone_id}</div>
+            <div class="free"><strong>${free}</strong> / ${cap} spaces free — ${occupancyBadge(rate)} ${observed}</div>
+            <div class="confidence">${p.summary || ''}</div>
+            <div class="bar"><span style="width:${Math.min(100, Math.max(0, rate * 100))}%"></span></div>
+          `;
+          card.addEventListener('click', () => { map.setView([lat, lon], 15); });
+          listEl.appendChild(card);
+
+          const color = rate <= 0.4 ? '#49d17d' : rate <= 0.7 ? '#f7b955' : '#ff6b6b';
+          if (!markers[p.zone_id]) {
+            markers[p.zone_id] = L.circleMarker([lat, lon], {
+              radius: 8,
+              fillColor: color,
+              color: '#0c1216',
+              weight: 1.5,
+              fillOpacity: 0.9
+            }).addTo(map);
+          } else {
+            markers[p.zone_id].setStyle({ fillColor: color });
+          }
+          markers[p.zone_id].bindTooltip(`Zone ${p.zone_id}: ${free}/${cap} free`, { permanent: false });
+        });
+
+        state.lastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const avgOcc = data.predictions.length ? totalOcc / data.predictions.length : null;
+        updateOverview({
+          avgOcc: data.predictions.length ? totalOcc / data.predictions.length : null,
+          totalFree,
+          openZones,
+          lastUpdated: state.lastUpdated
+        });
+        updateTrend(avgOcc);
+        updateDistribution(data.predictions);
+        updateRankings(data.predictions);
+      } catch (e) {
+        listEl.innerHTML = `
+          <div class="error-state">
+            <strong>Could not load predictions</strong>
+            The API may not be running or the model may not be trained. Run the training pipeline and start the server.
+          </div>
+        `;
+      }
+    }
+
+    initTheme();
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const current = root.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    checkHealth();
+    loadPredictions();
+    setInterval(() => {
+      checkHealth();
+      loadPredictions();
+    }, 30000);
+  </script>
+</body>
+</html>
